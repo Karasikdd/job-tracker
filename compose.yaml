@@ -31,6 +31,17 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
+  api:
+    build: .
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://jobtracker:local_dev_password@db:5432/jobtracker
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   postgres_data:
