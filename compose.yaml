@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: jobtracker
+      POSTGRES_PASSWORD: local_dev_password
+      POSTGRES_DB: jobtracker
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jobtracker -d jobtracker"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  testdb:
+    image: postgres:17
+    profiles: ["test"]
+    environment:
+      POSTGRES_USER: jobtracker
+      POSTGRES_PASSWORD: local_dev_password
+      POSTGRES_DB: jobtracker_test
+    ports:
+      - "127.0.0.1:5434:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jobtracker -d jobtracker_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  postgres_data:
