@@ -8,7 +8,7 @@ Backend project for tracking job applications.
 
 ## Local development
 
-Python 3.13 is required.
+Python 3.13 is required
 
 Create and activate a virtual environment, install dependencies,
 then run: fastapi dev main.py
