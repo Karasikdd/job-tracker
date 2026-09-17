@@ -1,4 +1,4 @@
-Copy to clipboard.venv/
+.venv/
 .idea/
 __pycache__/
 *.py[cod]
@@ -8,3 +8,11 @@ __pycache__/
 .env.*
 !.env.example
 .DS_Store
+node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/playwright-report/
+frontend/test-results/
+celerybeat-schedule*
+celerybeat.pid
+*.log
