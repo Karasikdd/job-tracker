@@ -1,6 +1,20 @@
-import { Link, Outlet, useNavigate } from "react-router";
+import {
+  NavLink,
+  Outlet,
+  useNavigate,
+} from "react-router";
 
 import { useAuth } from "../auth/AuthProvider";
+
+function getNavigationClassName({
+  isActive,
+}: {
+  isActive: boolean;
+}): string {
+  return isActive
+    ? "navigation-link navigation-link-active"
+    : "navigation-link";
+}
 
 export function AppLayout() {
   const { user, logout } = useAuth();
@@ -14,23 +28,52 @@ export function AppLayout() {
   return (
     <div className="app">
       <header className="app-header">
-        <Link className="brand" to="/applications">
-          Job Tracker
-        </Link>
+        <div className="header-content">
+          <NavLink
+            className="brand"
+            to="/applications"
+            aria-label="Job Tracker home"
+          >
+            Job Tracker
+          </NavLink>
 
-        <nav className="navigation" aria-label="Main navigation">
-          <Link to="/applications">Applications</Link>
-          <Link to="/dashboard">Statistics</Link>
-        </nav>
+          <nav
+            className="navigation"
+            aria-label="Main navigation"
+          >
+            <NavLink
+              className={getNavigationClassName}
+              to="/applications"
+            >
+              Applications
+            </NavLink>
 
-        <div className="user-menu">
-          {user !== null && (
-            <span className="user-email">{user.email}</span>
-          )}
+            <NavLink
+              className={getNavigationClassName}
+              to="/dashboard"
+            >
+              Statistics
+            </NavLink>
+          </nav>
 
-          <button type="button" onClick={handleLogout}>
-            Logout
-          </button>
+          <div className="user-menu">
+            {user !== null && (
+              <span
+                className="user-email"
+                title={user.email}
+              >
+                {user.email}
+              </span>
+            )}
+
+            <button
+              className="logout-button"
+              type="button"
+              onClick={handleLogout}
+            >
+              Logout
+            </button>
+          </div>
         </div>
       </header>
 
