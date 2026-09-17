@@ -14,6 +14,7 @@ import {
 import { ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthProvider";
 import { ApplicationForm } from "../components/ApplicationForm";
+import { ApplicationHistory } from "../components/ApplicationHistory";
 import { ErrorMessage } from "../components/ErrorMessage";
 import { StatusBadge } from "../components/StatusBadge";
 
@@ -22,7 +23,7 @@ import type {
   JobApplication,
 } from "../types/api";
 
-const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
+const dateTimeFormatter = new Intl.DateTimeFormat("en", {
   dateStyle: "medium",
   timeStyle: "short",
 });
@@ -56,9 +57,13 @@ function getSafeUrl(value: string | null): string | null {
 }
 
 export function ApplicationPage() {
-  const { accessToken, logout } = useAuth();
-
   const { id } = useParams();
+
+  return <ApplicationDetail key={id ?? ""} id={id} />;
+}
+
+function ApplicationDetail({ id }: { id: string | undefined }) {
+  const { accessToken, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -78,11 +83,15 @@ export function ApplicationPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const [reloadNumber, setReloadNumber] = useState(0);
+  const [historyRevision, setHistoryRevision] = useState(0);
 
+  const updateControllerRef = useRef<AbortController | null>(null);
   const deleteControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     return () => {
+      updateControllerRef.current?.abort();
+      updateControllerRef.current = null;
       deleteControllerRef.current?.abort();
       deleteControllerRef.current = null;
     };
@@ -98,7 +107,7 @@ export function ApplicationPage() {
     const token = accessToken;
     const controller = new AbortController();
 
-    async function loadApplication() {
+    async function loadApplication(): Promise<void> {
       setIsLoading(true);
       setLoadError(null);
       setDeleteError(null);
@@ -165,13 +174,19 @@ export function ApplicationPage() {
   async function handleUpdate(
     payload: ApplicationCreate,
   ): Promise<void> {
-    if (accessToken === null || application === null) {
+    if (
+      accessToken === null ||
+      application === null ||
+      updateControllerRef.current !== null
+    ) {
       return;
     }
 
     const token = accessToken;
     const currentApplicationId = application.id;
+    const controller = new AbortController();
 
+    updateControllerRef.current = controller;
     setFormError(null);
 
     try {
@@ -179,11 +194,21 @@ export function ApplicationPage() {
         token,
         currentApplicationId,
         payload,
+        controller.signal,
       );
 
+      if (controller.signal.aborted) {
+        return;
+      }
+
       setApplication(updatedApplication);
+      setHistoryRevision((current) => current + 1);
       setIsEditing(false);
     } catch (error) {
+      if (controller.signal.aborted) {
+        return;
+      }
+
       if (error instanceof ApiError && error.status === 401) {
         logout();
 
@@ -203,6 +228,10 @@ export function ApplicationPage() {
           ? error.message
           : "An unexpected error occurred.",
       );
+    } finally {
+      if (updateControllerRef.current === controller) {
+        updateControllerRef.current = null;
+      }
     }
   }
 
@@ -344,6 +373,10 @@ export function ApplicationPage() {
           errorMessage={formError}
           onSubmit={handleUpdate}
           onCancel={() => {
+            if (updateControllerRef.current !== null) {
+              return;
+            }
+
             setFormError(null);
             setIsEditing(false);
           }}
@@ -441,6 +474,11 @@ export function ApplicationPage() {
           <p>No notes added.</p>
         )}
       </section>
+
+      <ApplicationHistory
+        applicationId={application.id}
+        revision={historyRevision}
+      />
     </section>
   );
 }

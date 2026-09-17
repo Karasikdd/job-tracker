@@ -536,3 +536,34 @@ button:disabled {
     width: 100%;
   }
 }
+.status-history-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.status-history-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.status-history-table caption {
+  padding: 0 0 0.75rem;
+  text-align: left;
+  font-size: 0.875rem;
+}
+
+.status-history-table th,
+.status-history-table td {
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid #9ca3af;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.status-history-table th {
+  font-weight: 600;
+}
+
+.status-history-table time {
+  white-space: nowrap;
+}

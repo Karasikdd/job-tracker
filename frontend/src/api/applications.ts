@@ -5,6 +5,7 @@ import type {
   ApplicationPatch,
   ApplicationStatus,
   JobApplication,
+  StatusHistory,
 } from "../types/api";
 
 export type ApplicationListParameters = {
@@ -102,6 +103,19 @@ export function deleteApplication(
     `/applications/${applicationId}`,
     {
       method: "DELETE",
+      token,
+      signal,
+    },
+  );
+}
+export function getApplicationHistory(
+  token: string,
+  applicationId: number,
+  signal?: AbortSignal,
+): Promise<StatusHistory[]> {
+  return apiRequest<StatusHistory[]>(
+    `/applications/${applicationId}/history`,
+    {
       token,
       signal,
     },

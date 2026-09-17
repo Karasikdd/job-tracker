@@ -38,3 +38,10 @@ export type ApplicationCreate = {
 };
 
 export type ApplicationPatch = Partial<ApplicationCreate>;
+
+export type StatusHistory = {
+  id: number;
+  old_status: ApplicationStatus;
+  new_status: ApplicationStatus;
+  changed_at: string;
+};
