@@ -9,6 +9,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { RegisterPage } from "./pages/RegisterPage";
+import { NewApplicationPage } from "./pages/NewApplicationPage";
 
 export default function App() {
   return (
@@ -23,6 +24,10 @@ export default function App() {
           <Route
             path="/applications"
             element={<ApplicationsPage />}
+          />
+          <Route
+            path="/applications/new"
+            element={<NewApplicationPage />}
           />
 
           <Route
