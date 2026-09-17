@@ -45,3 +45,7 @@ export type StatusHistory = {
   new_status: ApplicationStatus;
   changed_at: string;
 };
+export type ApplicationStats = {
+  total: number;
+  by_status: Record<ApplicationStatus, number>;
+};

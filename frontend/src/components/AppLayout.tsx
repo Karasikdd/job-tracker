@@ -20,7 +20,7 @@ export function AppLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  function handleLogout() {
+  function handleLogout(): void {
     logout();
     navigate("/login", { replace: true });
   }
@@ -50,7 +50,7 @@ export function AppLayout() {
 
             <NavLink
               className={getNavigationClassName}
-              to="/dashboard"
+              to="/stats"
             >
               Statistics
             </NavLink>
