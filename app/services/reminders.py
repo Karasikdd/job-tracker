@@ -4,8 +4,15 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.enums import ReminderStatus
-from app.models import Application, NotificationSettings, Reminder
+from app.enums import EmailDeliveryStatus, ReminderStatus
+from app.models import (
+    Application,
+    EmailDelivery,
+    Notification,
+    NotificationSettings,
+    Reminder,
+    User,
+)
 from app.schemas import ReminderCreate, ReminderPatch
 
 
@@ -204,3 +211,93 @@ def cancel_reminder(
     db.refresh(reminder)
 
     return reminder
+def process_due_reminders(
+    db: Session,
+    now: datetime,
+    batch_size: int = 100,
+) -> int:
+    if batch_size < 1:
+        raise ValueError("Batch size must be positive")
+
+    processed_at = normalize_utc(now)
+
+    query = (
+        select(Reminder)
+        .where(
+            Reminder.status == ReminderStatus.scheduled,
+            Reminder.remind_at <= processed_at,
+        )
+        .order_by(Reminder.remind_at, Reminder.id)
+        .limit(batch_size)
+        .with_for_update(skip_locked=True)
+        .execution_options(populate_existing=True)
+    )
+
+    reminders = list(db.scalars(query))
+
+    for reminder in reminders:
+        application = db.scalar(
+            select(Application).where(
+                Application.id == reminder.application_id,
+                Application.user_id == reminder.user_id,
+            )
+        )
+
+        owner_id = db.scalar(
+            select(User.id).where(
+                User.id == reminder.user_id,
+            )
+        )
+
+        if application is None or owner_id is None:
+            raise RuntimeError(
+                f"Reminder {reminder.id} has inconsistent ownership"
+            )
+
+        scheduled_at = normalize_utc(reminder.remind_at)
+
+        body_parts = [
+            f"{application.position} at {application.company}",
+            f"Scheduled for: {scheduled_at.isoformat()}",
+        ]
+
+        if reminder.message:
+            body_parts.append(reminder.message)
+
+        notification = Notification(
+            user_id=reminder.user_id,
+            application_id=reminder.application_id,
+            reminder_id=reminder.id,
+            title=reminder.title,
+            body="\n\n".join(body_parts),
+            created_at=processed_at,
+        )
+
+        db.add(notification)
+        db.flush()
+
+        if reminder.send_email:
+            email_enabled = db.scalar(
+                select(NotificationSettings.email_enabled).where(
+                    NotificationSettings.user_id == reminder.user_id,
+                )
+            )
+
+            if email_enabled:
+                delivery = EmailDelivery(
+                    notification_id=notification.id,
+                    status=EmailDeliveryStatus.pending,
+                    attempts=0,
+                    next_attempt_at=processed_at,
+                    created_at=processed_at,
+                )
+
+                db.add(delivery)
+
+        reminder.status = ReminderStatus.fired
+        reminder.fired_at = processed_at
+        reminder.updated_at = processed_at
+
+    db.flush()
+
+    return len(reminders)
