@@ -463,3 +463,29 @@ The workflow configuration is located at:
 ## License
 
 This project is currently provided for educational and portfolio purposes.
+
+## Local background services
+
+Start PostgreSQL, Redis, and Mailpit:
+
+```bash
+docker compose up -d db redis mailpit
+```
+
+Check Redis:
+
+```bash
+docker compose exec redis redis-cli ping
+```
+
+Expected response: `PONG`.
+
+Mailpit UI: http://127.0.0.1:8025
+
+Local SMTP endpoint: `127.0.0.1:1025`.
+
+Mailpit captures development emails locally. SMTP forwarding is not
+configured. The tested Mailpit image is pinned by digest in `compose.yaml`.
+
+Mailpit messages are disposable and may be lost when the container
+is recreated.
