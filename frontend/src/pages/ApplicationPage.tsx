@@ -17,7 +17,7 @@ import { ApplicationForm } from "../components/ApplicationForm";
 import { ApplicationHistory } from "../components/ApplicationHistory";
 import { ErrorMessage } from "../components/ErrorMessage";
 import { StatusBadge } from "../components/StatusBadge";
-
+import { ReminderList } from "../components/ReminderList";
 import type {
   ApplicationCreate,
   JobApplication,
@@ -479,6 +479,7 @@ function ApplicationDetail({ id }: { id: string | undefined }) {
         applicationId={application.id}
         revision={historyRevision}
       />
+      <ReminderList applicationId={application.id} />
     </section>
   );
 }
