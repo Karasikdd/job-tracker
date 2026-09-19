@@ -10,6 +10,8 @@ from pydantic import (
 )
 
 from app.enums import Status
+from pydantic import AwareDatetime, field_validator
+from app.enums import ReminderKind, ReminderStatus
 
 
 class Credentials(BaseModel):
@@ -75,3 +77,80 @@ class HistoryRead(BaseModel):
     old_status: Status
     new_status: Status
     changed_at: datetime
+class ReminderCreate(BaseModel):
+    model_config = ConfigDict(
+        str_strip_whitespace=True,
+        extra="forbid",
+    )
+
+    title: str = Field(min_length=1, max_length=200)
+    message: str | None = Field(default=None, max_length=2000)
+    kind: ReminderKind = ReminderKind.custom
+    remind_at: AwareDatetime
+    send_email: bool = False
+
+
+class ReminderPatch(BaseModel):
+    model_config = ConfigDict(
+        str_strip_whitespace=True,
+        extra="forbid",
+    )
+
+    title: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=200,
+    )
+    message: str | None = Field(default=None, max_length=2000)
+    remind_at: AwareDatetime | None = None
+    send_email: bool | None = None
+
+    @field_validator("title", "remind_at", "send_email", mode="before")
+    @classmethod
+    def reject_null(cls, value: object) -> object:
+        if value is None:
+            raise ValueError("This field cannot be null")
+        return value
+
+
+class ReminderRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    application_id: int
+    title: str
+    message: str | None
+    kind: ReminderKind
+    remind_at: AwareDatetime
+    status: ReminderStatus
+    send_email: bool
+    created_at: datetime
+    fired_at: datetime | None
+
+
+class NotificationRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    application_id: int
+    reminder_id: int
+    title: str
+    body: str
+    created_at: datetime
+    read_at: datetime | None
+
+
+class NotificationSettingsRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    email_enabled: bool
+
+
+class NotificationSettingsPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email_enabled: bool
+
+
+class UnreadCountRead(BaseModel):
+    count: int = Field(ge=0)
