@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-
+from app.routers import reminders
 from app.routers import applications, auth
 from app.schemas import UserRead
 from app.security import CurrentUser
@@ -7,7 +7,7 @@ from app.security import CurrentUser
 app = FastAPI(title="Job Tracker API", version="0.1.0")
 app.include_router(auth.router)
 app.include_router(applications.router)
-
+app.include_router(reminders.router)
 
 @app.get("/health", tags=["health"])
 def health():
