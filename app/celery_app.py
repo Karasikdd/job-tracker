@@ -6,7 +6,10 @@ from app.config import settings
 celery_app = Celery(
     "job_tracker",
     broker=settings.broker_url,
-    include=["app.tasks.reminders"],
+    include=[
+        "app.tasks.reminders",
+        "app.tasks.email",
+    ],
 )
 
 celery_app.conf.update(
@@ -20,6 +23,10 @@ celery_app.conf.update(
         "process-due-reminders": {
             "task": "jobtracker.process_due_reminders",
             "schedule": 30.0,
+        },
+        "dispatch-email-deliveries": {
+            "task": "jobtracker.dispatch_email_deliveries",
+            "schedule": 15.0,
         },
     },
 )
