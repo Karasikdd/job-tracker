@@ -11,39 +11,50 @@ import { NotFoundPage } from "./pages/NotFoundPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { NewApplicationPage } from "./pages/NewApplicationPage";
 import { StatsPage } from "./pages/StatsPage";
-
+import { NotificationsPage } from "./pages/NotificationsPage";
+import { SettingsPage } from "./pages/SettingsPage";
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<RootRedirect />} />
+  <Routes>
+    <Route path="/" element={<RootRedirect />} />
 
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route path="/stats" element={<StatsPage />} />
-      <Route element={<RequireAuth />}>
-        <Route element={<AppLayout />}>
-          <Route
-            path="/applications"
-            element={<ApplicationsPage />}
-          />
-          <Route
-            path="/applications/new"
-            element={<NewApplicationPage />}
-          />
+    <Route path="/login" element={<LoginPage />} />
+    <Route path="/register" element={<RegisterPage />} />
 
-          <Route
-            path="/applications/:id"
-            element={<ApplicationPage />}
-          />
-
-          <Route
-            path="/dashboard"
-            element={<DashboardPage />}
-          />
-        </Route>
+    <Route element={<RequireAuth />}>
+      <Route element={<AppLayout />}>
+        <Route
+          path="/applications"
+          element={<ApplicationsPage />}
+        />
+        <Route
+          path="/applications/new"
+          element={<NewApplicationPage />}
+        />
+        <Route
+          path="/applications/:id"
+          element={<ApplicationPage />}
+        />
+        <Route
+          path="/dashboard"
+          element={<DashboardPage />}
+        />
+        <Route
+          path="/stats"
+          element={<StatsPage />}
+        />
+        <Route
+          path="/notifications"
+          element={<NotificationsPage />}
+        />
+        <Route
+          path="/settings"
+          element={<SettingsPage />}
+        />
       </Route>
+    </Route>
 
-      <Route path="*" element={<NotFoundPage />} />
-    </Routes>
-  );
+    <Route path="*" element={<NotFoundPage />} />
+  </Routes>
+);
 }
