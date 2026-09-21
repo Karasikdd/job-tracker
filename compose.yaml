@@ -1,3 +1,13 @@
+x-app-environment: &app-environment
+  DATABASE_URL: postgresql+psycopg://jobtracker:local_dev_password@db:5432/jobtracker
+  BROKER_URL: redis://redis:6379/0
+  EMAIL_DELIVERY_ENABLED: "true"
+  EMAIL_TRANSPORT: mailpit
+  SMTP_HOST: mailpit
+  SMTP_PORT: "1025"
+  SMTP_SECURITY: none
+  FRONTEND_URL: http://127.0.0.1:5173
+
 services:
   db:
     image: postgres:17
@@ -31,23 +41,13 @@ services:
       interval: 3s
       timeout: 3s
       retries: 20
-  api:
-    build: .
-    env_file:
-      - .env
-    environment:
-      DATABASE_URL: postgresql+psycopg://jobtracker:local_dev_password@db:5432/jobtracker
-    ports:
-      - "127.0.0.1:8000:8000"
-    depends_on:
-      db:
-        condition: service_healthy
+
   redis:
     image: redis:7.4-alpine
     ports:
       - "127.0.0.1:6379:6379"
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 3s
       timeout: 3s
       retries: 20
@@ -57,6 +57,59 @@ services:
     ports:
       - "127.0.0.1:1025:1025"
       - "127.0.0.1:8025:8025"
+
+  api:
+    build: .
+    env_file:
+      - .env
+    environment: *app-environment
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+
+  worker:
+    build: .
+    env_file:
+      - .env
+    environment: *app-environment
+    command:
+      - celery
+      - -A
+      - app.celery_app:celery_app
+      - worker
+      - --loglevel=info
+      - --concurrency=2
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+
+  beat:
+    build: .
+    env_file:
+      - .env
+    environment: *app-environment
+    command:
+      - celery
+      - -A
+      - app.celery_app:celery_app
+      - beat
+      - --loglevel=info
+      - --schedule=/tmp/celerybeat-schedule
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   postgres_data:
