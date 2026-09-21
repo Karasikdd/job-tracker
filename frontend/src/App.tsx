@@ -12,6 +12,7 @@ import { RegisterPage } from "./pages/RegisterPage";
 import { NewApplicationPage } from "./pages/NewApplicationPage";
 import { StatsPage } from "./pages/StatsPage";
 import { NotificationsPage } from "./pages/NotificationsPage";
+import { SettingsPage } from "./pages/SettingsPage";
 export default function App() {
   return (
   <Routes>
@@ -45,6 +46,10 @@ export default function App() {
         <Route
           path="/notifications"
           element={<NotificationsPage />}
+        />
+        <Route
+          path="/settings"
+          element={<SettingsPage />}
         />
       </Route>
     </Route>

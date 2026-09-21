@@ -58,6 +58,16 @@ export function AppLayout() {
                   Statistics
                 </NavLink>
                 <NotificationBell />
+                <NavLink
+                  to="/settings"
+                  className={({ isActive }) =>
+                    isActive
+                      ? "navigation-link navigation-link-active"
+                      : "navigation-link"
+                  }
+                >
+                  Settings
+                </NavLink>
               </nav>
 
               <div className="user-menu">
