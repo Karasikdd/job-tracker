@@ -1,491 +1,243 @@
-# Job Tracker API
+# Job Tracker
 
-[![Tests](https://github.com/Karasikdd/job-tracker/actions/workflows/tests.yml/badge.svg)](https://github.com/Karasikdd/job-tracker/actions/workflows/tests.yml)
+[![CI](https://github.com/Karasikdd/job-tracker/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Karasikdd/job-tracker/actions/workflows/ci.yml)
 
-A backend application for tracking job applications, their current statuses,
-notes, and status history.
+A full-stack application for managing job applications, tracking status changes, and scheduling reminders with in-app notifications and optional email delivery.
 
-The project demonstrates the development of a REST API with authentication,
-relational database persistence, database migrations, automated tests,
-Docker containers, and continuous integration.
+Built with FastAPI, React, TypeScript, PostgreSQL, Celery, and Redis.
 
 ## Features
 
-- User registration and login
-- Password hashing
-- JWT-based authentication
-- Creation of job applications
-- Viewing a user's own applications
-- Partial application updates
-- Application deletion
-- Filtering by application status
-- Search by company or position
-- Pagination with `limit` and `offset`
-- Application status history
-- Statistics grouped by status
-- Isolation of data between users
-- Automatic API documentation
-- PostgreSQL persistence
-- Alembic database migrations
-- Automated tests with pytest
-- Docker-based local environment
-- Continuous integration with GitHub Actions
+- User registration and JWT authentication.
+- Create, edit, and delete job applications.
+- Search, status filtering, and pagination.
+- Application status history and statistics.
+- Create, edit, and cancel scheduled reminders.
+- In-app notifications with unread filtering and a shared unread counter.
+- User-controlled email notification settings.
+- Session restoration after a page reload while the access token remains valid.
+- Local email inspection through Mailpit.
 
-## Technology Stack
+## Technology
 
-- Python 3.13
-- FastAPI
-- PostgreSQL
-- SQLAlchemy 2
-- Alembic
-- Pydantic
-- PyJWT
-- pwdlib with Argon2
-- pytest
-- Docker and Docker Compose
-- GitHub Actions
+| Area | Tools |
+| --- | --- |
+| Backend | Python, FastAPI, Pydantic |
+| Database | PostgreSQL, SQLAlchemy, Alembic |
+| Authentication | JWT, Argon2 password hashing |
+| Background processing | Celery, Redis |
+| Frontend | React, TypeScript, Vite |
+| Local email | Mailpit |
+| Testing | pytest, FastAPI TestClient |
+| Automation | GitHub Actions, Docker Compose |
 
-## Project Structure
+## Architecture
 
-```text
-job-tracker/
-├── .github/
-│   └── workflows/
-│       └── tests.yml
-├── alembic/
-│   └── versions/
-├── app/
-│   ├── routers/
-│   │   ├── applications.py
-│   │   └── auth.py
-│   ├── config.py
-│   ├── database.py
-│   ├── enums.py
-│   ├── main.py
-│   ├── models.py
-│   ├── schemas.py
-│   └── security.py
-├── tests/
-│   ├── conftest.py
-│   └── test_api.py
-├── .dockerignore
-├── .env.example
-├── .gitignore
-├── alembic.ini
-├── compose.yaml
-├── Dockerfile
-├── requirements.txt
-└── README.md
+```mermaid
+flowchart TD
+    Browser["React frontend"] -->|"HTTP API"| API["FastAPI"]
+    API --> DB[("PostgreSQL")]
+    Beat["Celery Beat"] -->|"Periodic tasks"| Redis[("Redis broker")]
+    Redis --> Worker["Celery worker"]
+    Worker --> DB
+    Worker -->|"SMTP"| Mailpit["Mailpit"]
 ```
 
-## Requirements
+FastAPI handles authentication, application management, reminders, and notification preferences.
 
-For the Docker setup:
+Celery Beat schedules reminder processing every 30 seconds and email dispatch every 15 seconds. The worker processes due reminders, creates in-app notifications, and queues email deliveries when the reminder and user settings allow email.
+
+## Implementation Details
+
+- Ownership checks restrict access to each user's applications and notifications.
+- Reminder processing uses PostgreSQL row locks with `SKIP LOCKED`.
+- Processing a reminder updates its status and creates its notification within a database transaction.
+- Reprocessing an already fired reminder does not create another notification.
+- Marking a notification as read preserves its original read timestamp on repeated requests.
+- Reminder timestamps are timezone-aware and normalized to UTC.
+- Tests use a separate database and transaction rollback for isolation.
+
+## Local Setup
+
+### Prerequisites
 
 - Git
-- Docker Desktop
-- Docker Compose
+- Docker with Docker Compose
+- Node.js 24 and npm
+- Python 3.13 or 3.14 for running backend tests locally
 
-For development directly on the host machine:
-
-- Python 3.13
-- Git
-- Docker Desktop for PostgreSQL
-
-## Clone the Repository
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/Karasikdd/job-tracker.git
 cd job-tracker
 ```
 
-## Environment Configuration
+### 2. Configure the environment
 
-Create a local environment file from the provided example:
+Copy the example file if `.env` does not already exist:
 
 ```bash
 cp .env.example .env
 ```
 
-Generate a random secret key:
+Generate a secret:
 
 ```bash
 python3 -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-Copy the generated value and replace `REPLACE_ME` in `.env`:
+Set `SECRET_KEY` in `.env` to the generated value. Do not commit `.env`.
 
-```dotenv
-DATABASE_URL=postgresql+psycopg://jobtracker:local_dev_password@127.0.0.1:5433/jobtracker
-TEST_DATABASE_URL=postgresql+psycopg://jobtracker:local_dev_password@127.0.0.1:5434/jobtracker_test
-SECRET_KEY=PASTE_THE_GENERATED_VALUE_HERE
-```
+The example environment uses host addresses for local Python processes. Docker Compose overrides database, Redis, and SMTP addresses for containers.
 
-The `.env` file contains local configuration and must not be committed.
-
-## Run with Docker
-
-Build the API image:
+### 3. Build and start the infrastructure
 
 ```bash
-docker compose build api
+docker compose config --quiet
+docker compose build api worker beat
+docker compose up -d db redis mailpit
 ```
 
-Start PostgreSQL:
+### 4. Apply database migrations
 
 ```bash
-docker compose up -d db
+docker compose run --rm api alembic upgrade head
 ```
 
-Check the database status:
+### 5. Start the backend and background processes
 
 ```bash
+docker compose up -d api worker beat
 docker compose ps
 ```
 
-Wait until the `db` service is marked as `healthy`.
+Run only one Beat instance for this schedule.
 
-Apply database migrations:
-
-```bash
-docker compose run --rm --no-deps api alembic upgrade head
-```
-
-Start the API:
+### 6. Start the frontend
 
 ```bash
-docker compose up -d api
+cd frontend
+npm ci
+npm run dev
 ```
 
-Check the running services:
+Use `http://127.0.0.1:5173` consistently when testing browser sessions.
+
+### Local Services
+
+| Service | Address |
+| --- | --- |
+| Frontend | http://127.0.0.1:5173 |
+| API documentation | http://127.0.0.1:8000/docs |
+| Mailpit inbox | http://127.0.0.1:8025 |
+| PostgreSQL | 127.0.0.1:5433 |
+| Test PostgreSQL | 127.0.0.1:5434 |
+| Redis | 127.0.0.1:6379 |
+
+## Try a Reminder
+
+1. Register an account and create an application.
+2. Open Settings, enable email reminders, and save.
+3. Open the application and create a reminder a few minutes in the future.
+4. Select “Also send email”.
+5. After the scheduled time, refresh the reminder and notification lists.
+6. Check Mailpit for the email.
+7. Mark the notification as read and check the unread counter.
+
+Background processing is periodic, so delivery may occur shortly after the scheduled time.
+
+Compose enables email delivery to local Mailpit. Messages are captured there rather than delivered to external inboxes.
+
+## Tests
+
+Run these commands from the repository root.
+
+### Prepare the Python environment
 
 ```bash
-docker compose ps
-```
-
-View API logs:
-
-```bash
-docker compose logs api
-```
-
-The application is now available at:
-
-- Health check: http://127.0.0.1:8000/health
-- Swagger UI: http://127.0.0.1:8000/docs
-- OpenAPI schema: http://127.0.0.1:8000/openapi.json
-
-To stop the application:
-
-```bash
-docker compose stop
-```
-
-## Test the API Manually
-
-Open Swagger UI:
-
-```text
-http://127.0.0.1:8000/docs
-```
-
-### 1. Register a User
-
-Open:
-
-```text
-POST /auth/register
-```
-
-Use example data:
-
-```json
-{
-  "email": "owner@example.com",
-  "password": "Example-password-123"
-}
-```
-
-A successful request returns status code `201`.
-
-### 2. Log In
-
-Open:
-
-```text
-POST /auth/login
-```
-
-Send the same credentials:
-
-```json
-{
-  "email": "owner@example.com",
-  "password": "Example-password-123"
-}
-```
-
-Copy the returned `access_token`.
-
-### 3. Authorize Swagger UI
-
-Click `Authorize` at the top of Swagger UI.
-
-Paste only the token value into the HTTP Bearer field. Do not add quotation
-marks. Swagger UI adds the `Bearer` prefix automatically.
-
-### 4. Create a Job Application
-
-Open:
-
-```text
-POST /applications
-```
-
-Use:
-
-```json
-{
-  "company": "Example GmbH",
-  "position": "Werkstudent Backend",
-  "status": "saved",
-  "location": "Munich",
-  "notes": "Application prepared"
-}
-```
-
-Save the returned application `id`.
-
-### 5. Update the Status
-
-Open:
-
-```text
-PATCH /applications/{application_id}
-```
-
-Enter the application ID and use:
-
-```json
-{
-  "status": "applied",
-  "notes": "CV sent"
-}
-```
-
-### 6. View Status History
-
-Open:
-
-```text
-GET /applications/{application_id}/history
-```
-
-The response should contain the transition from `saved` to `applied`.
-
-### 7. View Statistics
-
-Open:
-
-```text
-GET /stats
-```
-
-The response contains the total number of applications and their distribution
-by status.
-
-## Local Development
-
-Create a virtual environment:
-
-```bash
-python3.13 -m venv .venv
-```
-
-Activate it on macOS or Linux:
-
-```bash
+python3 -m venv .venv
 source .venv/bin/activate
-```
-
-Install dependencies:
-
-```bash
 python -m pip install -r requirements.txt
 ```
 
-Create the local configuration:
-
-```bash
-cp .env.example .env
-```
-
-Generate a secret key and place it in `.env`:
-
-```bash
-python -c "import secrets; print(secrets.token_hex(32))"
-```
-
-Start the development database:
-
-```bash
-docker compose up -d db
-```
-
-Wait until the database is healthy:
-
-```bash
-docker compose ps
-```
-
-Apply migrations:
-
-```bash
-alembic upgrade head
-```
-
-Start the development server:
-
-```bash
-fastapi dev app/main.py
-```
-
-Open:
-
-```text
-http://127.0.0.1:8000/docs
-```
-
-Stop the development server with `Control+C`.
-
-## Run Tests
-
-Start the separate test database:
+### Start and migrate the test database
 
 ```bash
 docker compose --profile test up -d testdb
 ```
 
-Check its status:
+Apply migrations using `TEST_DATABASE_URL` from `.env`:
 
 ```bash
-docker compose --profile test ps
+python - <<'PY'
+import os
+
+from dotenv import load_dotenv
+from sqlalchemy.engine import make_url
+
+load_dotenv()
+test_url = os.environ["TEST_DATABASE_URL"]
+
+if make_url(test_url).database != "jobtracker_test":
+    raise RuntimeError("Expected the jobtracker_test database")
+
+os.environ["DATABASE_URL"] = test_url
+
+from alembic import command
+from alembic.config import Config
+
+command.upgrade(Config("alembic.ini"), "head")
+PY
 ```
 
-Apply migrations to the test database:
-
-```bash
-DATABASE_URL=postgresql+psycopg://jobtracker:local_dev_password@127.0.0.1:5434/jobtracker_test alembic upgrade head
-```
-
-Run all tests:
+### Run backend tests
 
 ```bash
 python -m pytest -q
 ```
 
-Run one test:
+Tests cover application management, authentication, ownership isolation, notification settings, reminder processing, cancellation, and repeated processing.
+
+The notification service tests check email delivery records without sending real emails.
+
+### Check the frontend
 
 ```bash
-python -m pytest tests/test_api.py::test_filters_pagination_and_stats -q
+cd frontend
+npm ci
+npm run lint
+npm run build
 ```
-
-The test database is separate from the normal development database.
-
-## API Endpoints
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/health` | Check application health |
-| `POST` | `/auth/register` | Register a user |
-| `POST` | `/auth/login` | Log in and obtain a token |
-| `GET` | `/users/me` | Get the authenticated user |
-| `POST` | `/applications` | Create an application |
-| `GET` | `/applications` | List and filter applications |
-| `GET` | `/applications/{id}` | Get one application |
-| `PATCH` | `/applications/{id}` | Update an application |
-| `DELETE` | `/applications/{id}` | Delete an application |
-| `GET` | `/applications/{id}/history` | Get status history |
-| `GET` | `/stats` | Get application statistics |
-
-All application, history, and statistics endpoints use the authenticated user's
-data. A user cannot access another user's applications.
-
-## Application Statuses
-
-The following statuses are supported:
-
-- `saved`
-- `applied`
-- `interview`
-- `offer`
-- `rejected`
 
 ## Continuous Integration
 
-GitHub Actions runs automatically on every push and pull request.
+GitHub Actions runs on pushes and pull requests:
 
-The workflow:
+- Backend tests on Python 3.13 and 3.14.
+- PostgreSQL database migrations before tests.
+- Python dependency compatibility checks.
+- Frontend lint and production build on Node.js 24.
 
-1. Starts PostgreSQL 17.
-2. Installs Python 3.13.
-3. Installs project dependencies.
-4. Applies Alembic migrations.
-5. Runs the pytest test suite.
+## Useful Commands
 
-The workflow configuration is located at:
+View backend and worker logs:
 
-```text
-.github/workflows/tests.yml
+```bash
+docker compose logs --tail=100 api worker beat
+```
+
+Stop the containers while retaining the database volume:
+
+```bash
+docker compose down
 ```
 
 ## Current Limitations
 
-- Access tokens expire after 30 minutes.
-- Refresh tokens are not implemented.
-- Tokens cannot currently be revoked before expiration.
-- Email confirmation is not implemented.
-- Password recovery is not implemented.
-- Status transitions are not restricted.
-- The project does not have a frontend.
-- Automatic job import is not implemented.
-- The API is not currently deployed publicly.
-
-## Possible Future Improvements
-
-- Add refresh tokens and explicit logout
-- Add a React frontend
-- Add reminders for unanswered applications
-- Add application deadlines and interviews
-- Add CSV import and export
-- Deploy the API with HTTPS
-
-## License
-
-This project is currently provided for educational and portfolio purposes.
-
-## Local background services
-
-Start PostgreSQL, Redis, and Mailpit:
-
-```bash
-docker compose up -d db redis mailpit
-```
-
-Check Redis:
-
-```bash
-docker compose exec redis redis-cli ping
-```
-
-Expected response: `PONG`.
-
-Mailpit UI: http://127.0.0.1:8025
-
-Local SMTP endpoint: `127.0.0.1:1025`.
-
-Mailpit captures development emails locally. SMTP forwarding is not
-configured. The tested Mailpit image is pinned by digest in `compose.yaml`.
-
-Mailpit messages are disposable and may be lost when the container
-is recreated.
+- Access tokens are stored in `sessionStorage` for reload persistence. They remain accessible to JavaScript.
+- Refresh-token rotation and automatic session renewal are not implemented. Users must sign in again after token expiration.
+- Local email delivery uses Mailpit.
+- Notifications are in-app records, not browser push notifications.
+- The unread counter polls periodically; the notification list is refreshed on demand.
+- The development setup does not include a public production deployment.
