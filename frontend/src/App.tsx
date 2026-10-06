@@ -1,11 +1,10 @@
-import { Route, Routes } from "react-router";
+import { Navigate, Route, Routes } from "react-router";
 
 import { RequireAuth } from "./auth/RequireAuth";
 import { AppLayout } from "./components/AppLayout";
 import { RootRedirect } from "./components/RootRedirect";
 import { ApplicationPage } from "./pages/ApplicationPage";
 import { ApplicationsPage } from "./pages/ApplicationsPage";
-import { DashboardPage } from "./pages/DashboardPage";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { RegisterPage } from "./pages/RegisterPage";
@@ -37,7 +36,7 @@ export default function App() {
         />
         <Route
           path="/dashboard"
-          element={<DashboardPage />}
+          element={<Navigate to="/stats" replace />}
         />
         <Route
           path="/stats"

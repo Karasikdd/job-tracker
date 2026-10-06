@@ -237,7 +237,7 @@ docker compose down
 
 - Access tokens are stored in `sessionStorage` for reload persistence. They remain accessible to JavaScript.
 - Refresh-token rotation and automatic session renewal are not implemented. Users must sign in again after token expiration.
-- Local email delivery uses Mailpit.
+- Only Mailpit email delivery is implemented. External SMTP delivery is not supported yet.
 - Notifications are in-app records, not browser push notifications.
 - The unread counter polls periodically; the notification list is refreshed on demand.
 - The development setup does not include a public production deployment.
